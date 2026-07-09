@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { DATA } from "../data/processes";
 import { TRACKED_EDGE_TYPES } from "../lib/graphStyle";
+import type { NodeStatus, NodeStatusMap } from "../lib/nodeStatus";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import ProcessGraph from "./ProcessGraph";
@@ -27,6 +28,7 @@ export default function ProcessExplorer() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   /** token bumps on every search pick so re-picking the same node re-focuses it. */
   const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
+  const [nodeStatuses, setNodeStatuses] = useState<NodeStatusMap>({});
 
   const toggleProcess = useCallback((id: string) => {
     setActiveProcesses((prev) => toggleInSet(prev, id));
@@ -56,6 +58,15 @@ export default function ProcessExplorer() {
     setFocusRequest((prev) => ({ id, token: (prev?.token ?? 0) + 1 }));
   }, []);
 
+  const setNodeStatus = useCallback((id: string, status: NodeStatus | null) => {
+    setNodeStatuses((prev) => {
+      const next = { ...prev };
+      if (status === null) delete next[id];
+      else next[id] = status;
+      return next;
+    });
+  }, []);
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--text-hi)]">
       <Header onSearchPick={handleSearchPick} />
@@ -79,8 +90,14 @@ export default function ProcessExplorer() {
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
             focusRequest={focusRequest}
+            nodeStatuses={nodeStatuses}
           />
-          <DetailPanel nodeId={selectedNodeId} onClose={closePanel} />
+          <DetailPanel
+            nodeId={selectedNodeId}
+            onClose={closePanel}
+            nodeStatuses={nodeStatuses}
+            onSetStatus={setNodeStatus}
+          />
         </div>
       </div>
     </div>

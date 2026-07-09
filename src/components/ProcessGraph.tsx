@@ -10,6 +10,7 @@ import {
   TRACKED_EDGE_TYPES,
   edgeStyle,
 } from "../lib/graphStyle";
+import { NODE_STATUSES, STATUS_META, type NodeStatusMap } from "../lib/nodeStatus";
 
 interface ProcessGraphProps {
   activeProcesses: Set<string>;
@@ -19,6 +20,7 @@ interface ProcessGraphProps {
   onSelectNode: (id: string | null) => void;
   /** Bumped token re-triggers the animated focus even for the same node id. */
   focusRequest: { id: string; token: number } | null;
+  nodeStatuses: NodeStatusMap;
 }
 
 interface RawNode {
@@ -129,6 +131,7 @@ export default function ProcessGraph({
   selectedNodeId,
   onSelectNode,
   focusRequest,
+  nodeStatuses,
 }: ProcessGraphProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const networkRef = useRef<Network | null>(null);
@@ -299,6 +302,22 @@ export default function ProcessGraph({
     });
   }, [focusRequest]);
 
+  useEffect(() => {
+    const nodes = nodesRef.current;
+    if (!nodes) return;
+    nodes.update(
+      rawNodesRef.current.map((n) => {
+        const status = nodeStatuses[n.id];
+        return { id: n.id, label: status ? `${STATUS_META[status].glyph} ${n.label}` : n.label };
+      }),
+    );
+  }, [nodeStatuses]);
+
+  const statusCounts = NODE_STATUSES.map((status) => ({
+    status,
+    count: Object.values(nodeStatuses).filter((s) => s === status).length,
+  })).filter((s) => s.count > 0);
+
   const activeCount = activeProcesses.size;
   const totalProcesses = DATA.processes.length;
   const watermark =
@@ -318,6 +337,22 @@ export default function ProcessGraph({
       <div className="pointer-events-none absolute left-[15px] top-[15px] z-[2] text-[10.5px] font-medium tracking-[-0.01em] text-[var(--text-lo)]">
         {watermark}
       </div>
+
+      {statusCounts.length > 0 && (
+        <div className="pointer-events-none absolute bottom-[18px] left-[15px] z-[5] flex items-center gap-2.5 rounded-[7px] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-[6px]">
+          {statusCounts.map(({ status, count }) => {
+            const meta = STATUS_META[status];
+            return (
+              <span key={status} className="flex items-center gap-[5px] text-[10px] text-[var(--text-mid)]">
+                <span className="text-[8px] leading-none" style={{ color: meta.color }}>
+                  {meta.glyph}
+                </span>
+                {count} {meta.label.toLowerCase()}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       <div className="absolute bottom-[18px] right-[18px] z-[5] flex flex-col gap-[3px]">
         <button

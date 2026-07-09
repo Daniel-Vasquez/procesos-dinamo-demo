@@ -1,9 +1,17 @@
 import { DATA, deptMap, nodeMap, procMap } from "../data/processes";
 import { edgeStyle } from "../lib/graphStyle";
+import {
+  NODE_STATUSES,
+  STATUS_META,
+  type NodeStatus,
+  type NodeStatusMap,
+} from "../lib/nodeStatus";
 
 interface DetailPanelProps {
   nodeId: string | null;
   onClose: () => void;
+  nodeStatuses: NodeStatusMap;
+  onSetStatus: (id: string, status: NodeStatus | null) => void;
 }
 
 interface ConnRow {
@@ -77,12 +85,13 @@ function buildConnections(nodeId: string): ConnRow[] {
   return rows;
 }
 
-export default function DetailPanel({ nodeId, onClose }: DetailPanelProps) {
+export default function DetailPanel({ nodeId, onClose, nodeStatuses, onSetStatus }: DetailPanelProps) {
   const node = nodeId ? nodeMap[nodeId] : null;
   const dept = node ? deptMap[node.dept] : null;
   const proc = node ? procMap[node.processId] : null;
   const connections = node ? buildConnections(node.id) : [];
   const isOpen = Boolean(node);
+  const currentStatus = node ? (nodeStatuses[node.id] ?? null) : null;
 
   return (
     <aside
@@ -104,6 +113,19 @@ export default function DetailPanel({ nodeId, onClose }: DetailPanelProps) {
                 <span className="h-[5px] w-[5px] rounded-full" style={{ background: dept.color }} />
                 <span>{dept.label}</span>
               </div>
+              {currentStatus && (
+                <div
+                  className="mb-[9px] ml-1.5 inline-flex items-center gap-[5px] rounded border px-2 py-[3px] text-[9px] font-bold uppercase tracking-[0.08em]"
+                  style={{
+                    background: STATUS_META[currentStatus].color + "1E",
+                    borderColor: STATUS_META[currentStatus].color + "66",
+                    color: STATUS_META[currentStatus].color,
+                  }}
+                >
+                  <span className="text-[8px] leading-none">{STATUS_META[currentStatus].glyph}</span>
+                  <span>{STATUS_META[currentStatus].label}</span>
+                </div>
+              )}
               <div className="mb-[3px] text-[13.5px] font-semibold leading-[1.4] text-[var(--text-hi)]">
                 {node.label.replace(/\n/g, " ")}
               </div>
@@ -119,6 +141,44 @@ export default function DetailPanel({ nodeId, onClose }: DetailPanelProps) {
           </div>
 
           <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-[18px]">
+            <section className="flex flex-col gap-[9px]">
+              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-lo)]">
+                Estado
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {NODE_STATUSES.map((status) => {
+                  const meta = STATUS_META[status];
+                  const active = currentStatus === status;
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      title={active ? "Quitar estado" : `Marcar como ${meta.label.toLowerCase()}`}
+                      onClick={() => onSetStatus(node.id, active ? null : status)}
+                      className={`flex items-center gap-[7px] rounded-[7px] border px-2.5 py-[7px] text-left text-[11px] font-medium transition-colors ${
+                        active
+                          ? "text-[var(--text-hi)]"
+                          : "border-[var(--border)] bg-[var(--bg)] text-[var(--text-mid)] hover:border-[var(--border2)] hover:text-[var(--text-hi)]"
+                      }`}
+                      style={
+                        active
+                          ? { borderColor: meta.color + "88", background: meta.color + "1E" }
+                          : undefined
+                      }
+                    >
+                      <span
+                        className="flex w-[14px] shrink-0 justify-center text-[9px] leading-none"
+                        style={{ color: meta.color }}
+                      >
+                        {meta.glyph}
+                      </span>
+                      <span>{meta.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
             <section className="flex flex-col gap-[9px]">
               <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-lo)]">
                 Descripción
