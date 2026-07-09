@@ -25,6 +25,8 @@ export default function ProcessExplorer() {
     () => new Set(TRACKED_EDGE_TYPES),
   );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  /** token bumps on every search pick so re-picking the same node re-focuses it. */
+  const [focusRequest, setFocusRequest] = useState<{ id: string; token: number } | null>(null);
 
   const toggleProcess = useCallback((id: string) => {
     setActiveProcesses((prev) => toggleInSet(prev, id));
@@ -49,9 +51,14 @@ export default function ProcessExplorer() {
 
   const closePanel = useCallback(() => setSelectedNodeId(null), []);
 
+  const handleSearchPick = useCallback((id: string) => {
+    setSelectedNodeId(id);
+    setFocusRequest((prev) => ({ id, token: (prev?.token ?? 0) + 1 }));
+  }, []);
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--text-hi)]">
-      <Header />
+      <Header onSearchPick={handleSearchPick} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           activeProcesses={activeProcesses}
@@ -71,6 +78,7 @@ export default function ProcessExplorer() {
             activeEdgeTypes={activeEdgeTypes}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
+            focusRequest={focusRequest}
           />
           <DetailPanel nodeId={selectedNodeId} onClose={closePanel} />
         </div>

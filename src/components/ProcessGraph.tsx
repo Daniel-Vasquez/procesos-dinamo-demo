@@ -17,6 +17,8 @@ interface ProcessGraphProps {
   activeEdgeTypes: Set<string>;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
+  /** Bumped token re-triggers the animated focus even for the same node id. */
+  focusRequest: { id: string; token: number } | null;
 }
 
 interface RawNode {
@@ -126,6 +128,7 @@ export default function ProcessGraph({
   activeEdgeTypes,
   selectedNodeId,
   onSelectNode,
+  focusRequest,
 }: ProcessGraphProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const networkRef = useRef<Network | null>(null);
@@ -287,6 +290,14 @@ export default function ProcessGraph({
       network.unselectAll();
     }
   }, [selectedNodeId]);
+
+  useEffect(() => {
+    if (!focusRequest) return;
+    networkRef.current?.focus(focusRequest.id, {
+      scale: 1.15,
+      animation: { duration: 550, easingFunction: "easeInOutQuad" },
+    });
+  }, [focusRequest]);
 
   const activeCount = activeProcesses.size;
   const totalProcesses = DATA.processes.length;
