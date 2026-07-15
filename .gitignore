@@ -22,3 +22,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# ClickUp connection test (standalone exercise, not part of the project)
+clickup-test/
