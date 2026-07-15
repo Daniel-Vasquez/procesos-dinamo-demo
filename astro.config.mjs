@@ -16,6 +16,9 @@ export default defineConfig({
     // 60s, en vez de golpear la API de ClickUp en cada visita.
     isr: {
       expiration: 60,
+      // El botón "Revisar cambios" pega directo a este endpoint: debe traer
+      // datos frescos de ClickUp en cada click, no servir el caché de ISR.
+      exclude: [/^\/api\/clickup\/template\/?$/],
     },
   }),
 
