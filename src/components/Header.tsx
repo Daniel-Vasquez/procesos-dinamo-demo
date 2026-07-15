@@ -1,4 +1,5 @@
 import { DATA, totalEdgeCount, totalNodeCount } from "../data/processes";
+import PageNav from "./PageNav";
 import SearchBox from "./SearchBox";
 
 interface HeaderProps {
@@ -16,6 +17,7 @@ export default function Header({ onSearchPick }: HeaderProps) {
         Agencia de Marketing Digital &nbsp;·&nbsp; {DATA.processes.length} procesos &nbsp;·&nbsp;{" "}
         {DATA.departments.length} departamentos
       </span>
+      <PageNav currentPath="/" />
       <div className="ml-auto">
         <SearchBox onPick={onSearchPick} />
       </div>

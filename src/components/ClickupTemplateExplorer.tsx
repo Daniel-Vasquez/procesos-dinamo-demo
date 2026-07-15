@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { AREAS, PEOPLE, TASKS, TEMPLATES } from "../data/clickupTemplate";
 import ClickupTemplateGraph from "./ClickupTemplateGraph";
 import ClickupTemplateSidebar from "./ClickupTemplateSidebar";
+import PageNav from "./PageNav";
 
 function toggleInSet(prev: Set<string>, id: string): Set<string> {
   const next = new Set(prev);
@@ -42,6 +43,7 @@ export default function ClickupTemplateExplorer() {
         <span className="text-[11px] font-normal text-[var(--text-lo)]">
           ClickUp · dínamo 2026 / Plantillas Dev 2025
         </span>
+        <PageNav currentPath="/clickup-plantilla-landing" />
         <div className="ml-auto flex items-center gap-[5px] rounded-[5px] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[10px] text-[var(--text-lo)]">
           <div className="h-[5px] w-[5px] rounded-full bg-[#3A7A3A]" />
           {TASKS.length} tareas &nbsp;·&nbsp; {peopleCount} personas &nbsp;·&nbsp; {AREAS.length} áreas
