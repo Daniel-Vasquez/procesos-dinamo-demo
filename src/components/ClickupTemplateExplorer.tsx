@@ -1,8 +1,12 @@
 import { useCallback, useState } from "react";
-import { AREAS, PEOPLE, TASKS, TEMPLATES } from "../data/clickupTemplate";
+import type { ClickupTemplateData } from "../data/clickupTemplate";
 import ClickupTemplateGraph from "./ClickupTemplateGraph";
 import ClickupTemplateSidebar from "./ClickupTemplateSidebar";
 import PageNav from "./PageNav";
+
+interface ClickupTemplateExplorerProps {
+  data: ClickupTemplateData;
+}
 
 function toggleInSet(prev: Set<string>, id: string): Set<string> {
   const next = new Set(prev);
@@ -11,27 +15,28 @@ function toggleInSet(prev: Set<string>, id: string): Set<string> {
   return next;
 }
 
-const peopleCount = PEOPLE.filter((p) => p.id !== "unassigned").length;
+export default function ClickupTemplateExplorer({ data }: ClickupTemplateExplorerProps) {
+  const { areas, templates, people, tasks, areaMap, personMap, templateMap } = data;
+  const peopleCount = people.filter((p) => p.id !== "unassigned").length;
 
-export default function ClickupTemplateExplorer() {
-  const [activeAreas, setActiveAreas] = useState<Set<string>>(() => new Set(AREAS.map((a) => a.id)));
+  const [activeAreas, setActiveAreas] = useState<Set<string>>(() => new Set(areas.map((a) => a.id)));
   const [activeTemplates, setActiveTemplates] = useState<Set<string>>(
-    () => new Set(TEMPLATES.map((t) => t.id)),
+    () => new Set(templates.map((t) => t.id)),
   );
 
   const toggleArea = useCallback((id: string) => {
     setActiveAreas((prev) => toggleInSet(prev, id));
   }, []);
   const activateAllAreas = useCallback(() => {
-    setActiveAreas(new Set(AREAS.map((a) => a.id)));
-  }, []);
+    setActiveAreas(new Set(areas.map((a) => a.id)));
+  }, [areas]);
 
   const toggleTemplate = useCallback((id: string) => {
     setActiveTemplates((prev) => toggleInSet(prev, id));
   }, []);
   const activateAllTemplates = useCallback(() => {
-    setActiveTemplates(new Set(TEMPLATES.map((t) => t.id)));
-  }, []);
+    setActiveTemplates(new Set(templates.map((t) => t.id)));
+  }, [templates]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--text-hi)]">
@@ -46,12 +51,14 @@ export default function ClickupTemplateExplorer() {
         <PageNav currentPath="/clickup-plantilla-landing" />
         <div className="ml-auto flex items-center gap-[5px] rounded-[5px] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[10px] text-[var(--text-lo)]">
           <div className="h-[5px] w-[5px] rounded-full bg-[#3A7A3A]" />
-          {TASKS.length} tareas &nbsp;·&nbsp; {peopleCount} personas &nbsp;·&nbsp; {AREAS.length} áreas
-          &nbsp;·&nbsp; {TEMPLATES.length} plantillas
+          {tasks.length} tareas &nbsp;·&nbsp; {peopleCount} personas &nbsp;·&nbsp; {areas.length} áreas
+          &nbsp;·&nbsp; {templates.length} plantillas
         </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
         <ClickupTemplateSidebar
+          areas={areas}
+          templates={templates}
           activeAreas={activeAreas}
           onToggleArea={toggleArea}
           onActivateAllAreas={activateAllAreas}
@@ -60,7 +67,16 @@ export default function ClickupTemplateExplorer() {
           onActivateAllTemplates={activateAllTemplates}
         />
         <div className="relative flex-1 overflow-hidden">
-          <ClickupTemplateGraph activeAreas={activeAreas} activeTemplates={activeTemplates} />
+          <ClickupTemplateGraph
+            areas={areas}
+            people={people}
+            tasks={tasks}
+            areaMap={areaMap}
+            personMap={personMap}
+            templateMap={templateMap}
+            activeAreas={activeAreas}
+            activeTemplates={activeTemplates}
+          />
         </div>
       </div>
     </div>

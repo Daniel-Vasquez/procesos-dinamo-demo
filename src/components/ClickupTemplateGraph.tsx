@@ -2,57 +2,41 @@ import { useEffect, useRef, useState } from "react";
 import { DataSet } from "vis-data";
 import { Network, type Edge, type Node, type Options } from "vis-network";
 import {
-  AREAS,
-  PEOPLE,
-  TASKS,
   UNASSIGNED_AREA_COLOR,
-  areaMap,
-  personMap,
-  templateMap,
+  type ClickupArea,
+  type ClickupPerson,
+  type ClickupProcessTemplate,
+  type ClickupTask,
 } from "../data/clickupTemplate";
 import { DIM_EDGE_COLOR, DIM_NODE_COLOR, DIM_NODE_FONT } from "../lib/graphStyle";
 
 interface ClickupTemplateGraphProps {
+  areas: ClickupArea[];
+  people: ClickupPerson[];
+  tasks: ClickupTask[];
+  areaMap: Record<string, ClickupArea>;
+  personMap: Record<string, ClickupPerson>;
+  templateMap: Record<string, ClickupProcessTemplate>;
   activeAreas: Set<string>;
   activeTemplates: Set<string>;
 }
 
 const NODE_FONT = { color: "#D4D4DC", size: 11.5, face: "system-ui,-apple-system,sans-serif" };
 
-function areaColor(areaId: string | null) {
-  return areaId ? areaMap[areaId].color : UNASSIGNED_AREA_COLOR;
-}
+function buildGraph(
+  areas: ClickupArea[],
+  people: ClickupPerson[],
+  tasks: ClickupTask[],
+  areaMap: Record<string, ClickupArea>,
+  personMap: Record<string, ClickupPerson>,
+  templateMap: Record<string, ClickupProcessTemplate>,
+): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] } {
+  const areaColor = (areaId: string | null) => (areaId ? areaMap[areaId].color : UNASSIGNED_AREA_COLOR);
 
-/** Areas are only toggleable when they belong to AREAS; the "Sin asignar" branch is always shown. */
-function personActive(personId: string, activeAreas: Set<string>): boolean {
-  const person = personMap[personId];
-  return person.areaId ? activeAreas.has(person.areaId) : true;
-}
-
-/** A task needs its template active AND at least one assignee in an active area. */
-function taskActive(taskId: string, activeAreas: Set<string>, activeTemplates: Set<string>): boolean {
-  const task = TASKS.find((t) => t.id === taskId);
-  if (!task) return true;
-  return activeTemplates.has(task.templateId) && task.assigneeIds.some((pid) => personActive(pid, activeAreas));
-}
-
-/** A person↔task edge follows that one assignee's area plus the task's template. */
-function personTaskEdgeActive(
-  personId: string,
-  taskId: string,
-  activeAreas: Set<string>,
-  activeTemplates: Set<string>,
-): boolean {
-  const task = TASKS.find((t) => t.id === taskId);
-  if (!task) return true;
-  return activeTemplates.has(task.templateId) && personActive(personId, activeAreas);
-}
-
-function buildGraph(): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  AREAS.forEach((area) => {
+  areas.forEach((area) => {
     nodes.push({
       id: `area-${area.id}`,
       label: area.label,
@@ -72,7 +56,7 @@ function buildGraph(): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] }
     });
   });
 
-  const hasUnassignedTask = TASKS.some((t) => t.assigneeIds.includes("unassigned"));
+  const hasUnassignedTask = tasks.some((t) => t.assigneeIds.includes("unassigned"));
   if (hasUnassignedTask) {
     // Virtual root so the "Sin asignar" branch stays anchored in the same tree
     // instead of being laid out as a disconnected component far from the rest.
@@ -96,7 +80,7 @@ function buildGraph(): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] }
     } as Node);
   }
 
-  PEOPLE.forEach((person) => {
+  people.forEach((person) => {
     if (person.id === "unassigned" && !hasUnassignedTask) return;
     const color = areaColor(person.areaId);
     nodes.push({
@@ -130,7 +114,7 @@ function buildGraph(): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] }
     }
   });
 
-  TASKS.forEach((task) => {
+  tasks.forEach((task) => {
     const primaryColor = areaColor(personMap[task.assigneeIds[0]]?.areaId ?? null);
     nodes.push({
       id: `task-${task.id}`,
@@ -172,23 +156,59 @@ function buildGraph(): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] }
       (id) =>
         id === "area-unassigned" ||
         id === "person-unassigned" ||
-        TASKS.some((t) => t.id === id.replace("task-", "") && t.assigneeIds.includes("unassigned")),
+        tasks.some((t) => t.id === id.replace("task-", "") && t.assigneeIds.includes("unassigned")),
     );
 
   return { nodes, edges, unassignedIds };
 }
 
-export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: ClickupTemplateGraphProps) {
+export default function ClickupTemplateGraph({
+  areas,
+  people,
+  tasks,
+  areaMap,
+  personMap,
+  templateMap,
+  activeAreas,
+  activeTemplates,
+}: ClickupTemplateGraphProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const networkRef = useRef<Network | null>(null);
   const nodesRef = useRef<DataSet<Node> | null>(null);
   const edgesRef = useRef<DataSet<Edge> | null>(null);
   const [selected, setSelected] = useState<{ kind: string; id: string } | null>(null);
 
+  const areaColor = (areaId: string | null) => (areaId ? areaMap[areaId].color : UNASSIGNED_AREA_COLOR);
+
+  /** Areas are only toggleable when they belong to `areas`; the "Sin asignar" branch is always shown. */
+  const personActive = (personId: string, active: Set<string>): boolean => {
+    const person = personMap[personId];
+    return person.areaId ? active.has(person.areaId) : true;
+  };
+
+  /** A task needs its template active AND at least one assignee in an active area. */
+  const taskActive = (taskId: string, activeAreaSet: Set<string>, activeTemplateSet: Set<string>): boolean => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return true;
+    return activeTemplateSet.has(task.templateId) && task.assigneeIds.some((pid) => personActive(pid, activeAreaSet));
+  };
+
+  /** A person↔task edge follows that one assignee's area plus the task's template. */
+  const personTaskEdgeActive = (
+    personId: string,
+    taskId: string,
+    activeAreaSet: Set<string>,
+    activeTemplateSet: Set<string>,
+  ): boolean => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return true;
+    return activeTemplateSet.has(task.templateId) && personActive(personId, activeAreaSet);
+  };
+
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const { nodes, edges, unassignedIds } = buildGraph();
+    const { nodes, edges, unassignedIds } = buildGraph(areas, people, tasks, areaMap, personMap, templateMap);
     const nodesDataSet = new DataSet<Node>(nodes);
     const edgesDataSet = new DataSet<Edge>(edges);
     nodesRef.current = nodesDataSet;
@@ -265,6 +285,7 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
       nodesRef.current = null;
       edgesRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -272,7 +293,7 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
     const edges = edgesRef.current;
     if (!nodes || !edges) return;
 
-    const areaUpdates: Node[] = AREAS.map((area) => {
+    const areaUpdates: Node[] = areas.map((area) => {
       const active = activeAreas.has(area.id);
       return active
         ? {
@@ -288,7 +309,7 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
         : { id: `area-${area.id}`, color: DIM_NODE_COLOR, font: DIM_NODE_FONT };
     });
 
-    const personUpdates: Node[] = PEOPLE.filter((p) => nodes.get(`person-${p.id}`)).map((person) => {
+    const personUpdates: Node[] = people.filter((p) => nodes.get(`person-${p.id}`)).map((person) => {
       const active = personActive(person.id, activeAreas);
       const color = areaColor(person.areaId);
       return active
@@ -305,7 +326,7 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
         : { id: `person-${person.id}`, color: DIM_NODE_COLOR, font: DIM_NODE_FONT };
     });
 
-    const taskUpdates: Node[] = TASKS.map((task) => {
+    const taskUpdates: Node[] = tasks.map((task) => {
       const active = taskActive(task.id, activeAreas, activeTemplates);
       const primaryColor = areaColor(personMap[task.assigneeIds[0]]?.areaId ?? null);
       return active
@@ -324,7 +345,7 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
 
     nodes.update([...areaUpdates, ...personUpdates, ...taskUpdates]);
 
-    const areaPersonEdgeUpdates: Edge[] = PEOPLE.filter((p) => edges.get(`e-area-${p.id}`)).map((person) => {
+    const areaPersonEdgeUpdates: Edge[] = people.filter((p) => edges.get(`e-area-${p.id}`)).map((person) => {
       const active = personActive(person.id, activeAreas);
       const color = areaColor(person.areaId);
       return active
@@ -332,7 +353,7 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
         : { id: `e-area-${person.id}`, color: DIM_EDGE_COLOR };
     });
 
-    const personTaskEdgeUpdates: Edge[] = TASKS.flatMap((task) =>
+    const personTaskEdgeUpdates: Edge[] = tasks.flatMap((task) =>
       task.assigneeIds.map((personId) => {
         const active = personTaskEdgeActive(personId, task.id, activeAreas, activeTemplates);
         const color = areaColor(personMap[personId]?.areaId ?? null);
@@ -343,14 +364,15 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
     );
 
     edges.update([...areaPersonEdgeUpdates, ...personTaskEdgeUpdates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAreas, activeTemplates]);
 
   const detail = (() => {
     if (!selected) return null;
     if (selected.kind === "area") {
       const area = areaMap[selected.id];
-      const peopleInArea = PEOPLE.filter((p) => p.areaId === selected.id);
-      const taskCount = TASKS.filter((t) =>
+      const peopleInArea = people.filter((p) => p.areaId === selected.id);
+      const taskCount = tasks.filter((t) =>
         t.assigneeIds.some((pid) => personMap[pid]?.areaId === selected.id),
       ).length;
       return (
@@ -373,7 +395,7 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
     if (selected.kind === "person") {
       const person = personMap[selected.id];
       const area = person.areaId ? areaMap[person.areaId] : null;
-      const tasks = TASKS.filter((t) => t.assigneeIds.includes(selected.id));
+      const personTasks = tasks.filter((t) => t.assigneeIds.includes(selected.id));
       return (
         <>
           <div className="text-[13px] font-semibold text-[var(--text-hi)]">{person.name}</div>
@@ -381,10 +403,11 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
             {area?.label ?? "Sin área"}
           </div>
           <div className="mt-2 text-[11px] text-[var(--text-mid)]">
-            {tasks.length} tarea{tasks.length !== 1 ? "s" : ""} asignada{tasks.length !== 1 ? "s" : ""}
+            {personTasks.length} tarea{personTasks.length !== 1 ? "s" : ""} asignada
+            {personTasks.length !== 1 ? "s" : ""}
           </div>
           <ul className="mt-1 space-y-1 text-[11px] text-[var(--text-hi)]">
-            {tasks.map((t) => (
+            {personTasks.map((t) => (
               <li key={t.id}>
                 {t.name}
                 <span className="text-[var(--text-lo)]"> · {templateMap[t.templateId].label}</span>
@@ -394,7 +417,7 @@ export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: C
         </>
       );
     }
-    const task = TASKS.find((t) => t.id === selected.id);
+    const task = tasks.find((t) => t.id === selected.id);
     if (!task) return null;
     return (
       <>

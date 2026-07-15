@@ -1,7 +1,9 @@
-import { AREAS, TEMPLATES } from "../data/clickupTemplate";
+import type { ClickupArea, ClickupProcessTemplate } from "../data/clickupTemplate";
 import FilterPill from "./FilterPill";
 
 interface ClickupTemplateSidebarProps {
+  areas: ClickupArea[];
+  templates: ClickupProcessTemplate[];
   activeAreas: Set<string>;
   onToggleArea: (id: string) => void;
   onActivateAllAreas: () => void;
@@ -28,6 +30,8 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 export default function ClickupTemplateSidebar({
+  areas,
+  templates,
   activeAreas,
   onToggleArea,
   onActivateAllAreas,
@@ -49,7 +53,7 @@ export default function ClickupTemplateSidebar({
           />
         </div>
         <div className="flex flex-col gap-0.5">
-          {TEMPLATES.map((template) => (
+          {templates.map((template) => (
             <FilterPill
               key={template.id}
               active={activeTemplates.has(template.id)}
@@ -74,7 +78,7 @@ export default function ClickupTemplateSidebar({
           />
         </div>
         <div className="flex flex-col gap-0.5">
-          {AREAS.map((area) => (
+          {areas.map((area) => (
             <FilterPill
               key={area.id}
               active={activeAreas.has(area.id)}

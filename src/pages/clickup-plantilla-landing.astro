@@ -1,6 +1,11 @@
 ---
+export const prerender = false;
+
 import "../styles/global.css";
 import ClickupTemplateExplorer from "../components/ClickupTemplateExplorer";
+import { getClickupTemplateData } from "../lib/clickup";
+
+const data = await getClickupTemplateData();
 ---
 
 <html lang="es">
@@ -12,6 +17,6 @@ import ClickupTemplateExplorer from "../components/ClickupTemplateExplorer";
 		<title>Plantilla Landing Dev — ClickUp</title>
 	</head>
 	<body>
-		<ClickupTemplateExplorer client:load />
+		<ClickupTemplateExplorer client:load data={data} />
 	</body>
 </html>
