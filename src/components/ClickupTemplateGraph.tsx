@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { DataSet } from "vis-data";
 import { Network, type Edge, type Node, type Options } from "vis-network";
-import { AREAS, PEOPLE, TASKS, UNASSIGNED_AREA_COLOR, areaMap, personMap } from "../data/clickupTemplate";
+import {
+  AREAS,
+  PEOPLE,
+  TASKS,
+  UNASSIGNED_AREA_COLOR,
+  areaMap,
+  personMap,
+  templateMap,
+} from "../data/clickupTemplate";
 import { DIM_EDGE_COLOR, DIM_NODE_COLOR, DIM_NODE_FONT } from "../lib/graphStyle";
 
 interface ClickupTemplateGraphProps {
   activeAreas: Set<string>;
+  activeTemplates: Set<string>;
 }
 
 const NODE_FONT = { color: "#D4D4DC", size: 11.5, face: "system-ui,-apple-system,sans-serif" };
@@ -20,9 +29,23 @@ function personActive(personId: string, activeAreas: Set<string>): boolean {
   return person.areaId ? activeAreas.has(person.areaId) : true;
 }
 
-function taskActive(taskId: string, activeAreas: Set<string>): boolean {
+/** A task needs its template active AND at least one assignee in an active area. */
+function taskActive(taskId: string, activeAreas: Set<string>, activeTemplates: Set<string>): boolean {
   const task = TASKS.find((t) => t.id === taskId);
-  return task ? task.assigneeIds.some((pid) => personActive(pid, activeAreas)) : true;
+  if (!task) return true;
+  return activeTemplates.has(task.templateId) && task.assigneeIds.some((pid) => personActive(pid, activeAreas));
+}
+
+/** A person↔task edge follows that one assignee's area plus the task's template. */
+function personTaskEdgeActive(
+  personId: string,
+  taskId: string,
+  activeAreas: Set<string>,
+  activeTemplates: Set<string>,
+): boolean {
+  const task = TASKS.find((t) => t.id === taskId);
+  if (!task) return true;
+  return activeTemplates.has(task.templateId) && personActive(personId, activeAreas);
 }
 
 function buildGraph(): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] } {
@@ -112,7 +135,7 @@ function buildGraph(): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] }
     nodes.push({
       id: `task-${task.id}`,
       label: task.name,
-      title: `Estado: ${task.status}`,
+      title: `${templateMap[task.templateId].label} · Estado: ${task.status}`,
       shape: "box",
       shapeProperties: { borderRadius: 6 },
       color: {
@@ -155,7 +178,7 @@ function buildGraph(): { nodes: Node[]; edges: Edge[]; unassignedIds: string[] }
   return { nodes, edges, unassignedIds };
 }
 
-export default function ClickupTemplateGraph({ activeAreas }: ClickupTemplateGraphProps) {
+export default function ClickupTemplateGraph({ activeAreas, activeTemplates }: ClickupTemplateGraphProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const networkRef = useRef<Network | null>(null);
   const nodesRef = useRef<DataSet<Node> | null>(null);
@@ -283,7 +306,7 @@ export default function ClickupTemplateGraph({ activeAreas }: ClickupTemplateGra
     });
 
     const taskUpdates: Node[] = TASKS.map((task) => {
-      const active = taskActive(task.id, activeAreas);
+      const active = taskActive(task.id, activeAreas, activeTemplates);
       const primaryColor = areaColor(personMap[task.assigneeIds[0]]?.areaId ?? null);
       return active
         ? {
@@ -311,7 +334,7 @@ export default function ClickupTemplateGraph({ activeAreas }: ClickupTemplateGra
 
     const personTaskEdgeUpdates: Edge[] = TASKS.flatMap((task) =>
       task.assigneeIds.map((personId) => {
-        const active = personActive(personId, activeAreas);
+        const active = personTaskEdgeActive(personId, task.id, activeAreas, activeTemplates);
         const color = areaColor(personMap[personId]?.areaId ?? null);
         return active
           ? { id: `e-${task.id}-${personId}`, color: { color: color + "66", highlight: color, hover: color } }
@@ -320,7 +343,7 @@ export default function ClickupTemplateGraph({ activeAreas }: ClickupTemplateGra
     );
 
     edges.update([...areaPersonEdgeUpdates, ...personTaskEdgeUpdates]);
-  }, [activeAreas]);
+  }, [activeAreas, activeTemplates]);
 
   const detail = (() => {
     if (!selected) return null;
@@ -362,7 +385,10 @@ export default function ClickupTemplateGraph({ activeAreas }: ClickupTemplateGra
           </div>
           <ul className="mt-1 space-y-1 text-[11px] text-[var(--text-hi)]">
             {tasks.map((t) => (
-              <li key={t.id}>{t.name}</li>
+              <li key={t.id}>
+                {t.name}
+                <span className="text-[var(--text-lo)]"> · {templateMap[t.templateId].label}</span>
+              </li>
             ))}
           </ul>
         </>
@@ -373,7 +399,9 @@ export default function ClickupTemplateGraph({ activeAreas }: ClickupTemplateGra
     return (
       <>
         <div className="text-[13px] font-semibold text-[var(--text-hi)]">{task.name}</div>
-        <div className="mt-1 text-[11px] text-[var(--text-mid)]">Estado: {task.status}</div>
+        <div className="mt-1 text-[11px] text-[var(--text-mid)]">
+          {templateMap[task.templateId].label} · Estado: {task.status}
+        </div>
         <ul className="mt-2 space-y-1 text-[11px] text-[var(--text-hi)]">
           {task.assigneeIds.map((pid) => {
             const p = personMap[pid];

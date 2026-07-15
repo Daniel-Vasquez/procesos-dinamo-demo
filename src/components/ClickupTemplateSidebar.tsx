@@ -1,10 +1,13 @@
-import { AREAS } from "../data/clickupTemplate";
+import { AREAS, TEMPLATES } from "../data/clickupTemplate";
 import FilterPill from "./FilterPill";
 
 interface ClickupTemplateSidebarProps {
   activeAreas: Set<string>;
   onToggleArea: (id: string) => void;
-  onActivateAll: () => void;
+  onActivateAllAreas: () => void;
+  activeTemplates: Set<string>;
+  onToggleTemplate: (id: string) => void;
+  onActivateAllTemplates: () => void;
 }
 
 function Dot({ color, active }: { color: string; active: boolean }) {
@@ -16,23 +19,57 @@ function Dot({ color, active }: { color: string; active: boolean }) {
   );
 }
 
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <div className="mb-[7px] text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-lo)]">
+      {children}
+    </div>
+  );
+}
+
 export default function ClickupTemplateSidebar({
   activeAreas,
   onToggleArea,
-  onActivateAll,
+  onActivateAllAreas,
+  activeTemplates,
+  onToggleTemplate,
+  onActivateAllTemplates,
 }: ClickupTemplateSidebarProps) {
   return (
     <aside className="z-10 flex w-[220px] min-w-[220px] shrink-0 flex-col gap-[26px] overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] p-[18px_13px]">
       <div>
-        <div className="mb-[7px] text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-lo)]">
-          Áreas
-        </div>
+        <SectionLabel>Plantillas</SectionLabel>
         <div className="mb-1 flex flex-col gap-0.5">
           <FilterPill
             active={false}
             color="#6A7090"
             label="Activar todas"
-            onClick={onActivateAll}
+            onClick={onActivateAllTemplates}
+            swatch={<Dot color="#6A7090" active />}
+          />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {TEMPLATES.map((template) => (
+            <FilterPill
+              key={template.id}
+              active={activeTemplates.has(template.id)}
+              color={template.color}
+              label={template.label}
+              onClick={() => onToggleTemplate(template.id)}
+              swatch={<Dot color={template.color} active={activeTemplates.has(template.id)} />}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <SectionLabel>Áreas</SectionLabel>
+        <div className="mb-1 flex flex-col gap-0.5">
+          <FilterPill
+            active={false}
+            color="#6A7090"
+            label="Activar todas"
+            onClick={onActivateAllAreas}
             swatch={<Dot color="#6A7090" active />}
           />
         </div>
