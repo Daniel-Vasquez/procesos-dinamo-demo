@@ -70,13 +70,19 @@ export default function ClickupTemplateSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const isDraggingRef = useRef(false);
+  const movedRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
+  // El botón de toggle vive dentro del riel de arrastre (no al lado), para que
+  // un pointerdown que empiece sobre el botón siga burbujeando hasta aquí.
+  // Un pointerup sin desplazamiento relevante se interpreta como "click" (toggle);
+  // con desplazamiento, como resize.
   const handleResizeStart = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.currentTarget.setPointerCapture(e.pointerId);
       isDraggingRef.current = true;
+      movedRef.current = false;
       startXRef.current = e.clientX;
       startWidthRef.current = width;
       setIsResizing(true);
@@ -86,11 +92,17 @@ export default function ClickupTemplateSidebar({
     [width],
   );
 
-  const handleResizeMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current) return;
-    const delta = e.clientX - startXRef.current;
-    setWidth(clamp(startWidthRef.current + delta, MIN_WIDTH, MAX_WIDTH));
-  }, []);
+  const handleResizeMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDraggingRef.current) return;
+      const delta = e.clientX - startXRef.current;
+      if (Math.abs(delta) > 4) movedRef.current = true;
+      if (!collapsed) {
+        setWidth(clamp(startWidthRef.current + delta, MIN_WIDTH, MAX_WIDTH));
+      }
+    },
+    [collapsed],
+  );
 
   const handleResizeEnd = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     isDraggingRef.current = false;
@@ -99,6 +111,16 @@ export default function ClickupTemplateSidebar({
     document.body.style.userSelect = "";
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    if (!movedRef.current) {
+      setCollapsed((c) => !c);
+    }
+  }, []);
+
+  const handleToggleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setCollapsed((c) => !c);
     }
   }, []);
 
@@ -163,25 +185,26 @@ export default function ClickupTemplateSidebar({
         </div>
       </aside>
 
-      <div className="relative flex w-[9px] shrink-0 items-center justify-center">
+      <div
+        onPointerDown={handleResizeStart}
+        onPointerMove={handleResizeMove}
+        onPointerUp={handleResizeEnd}
+        className="group relative flex w-[9px] shrink-0 cursor-col-resize touch-none items-center justify-center"
+      >
         {!collapsed && (
-          <div
-            onPointerDown={handleResizeStart}
-            onPointerMove={handleResizeMove}
-            onPointerUp={handleResizeEnd}
-            className="group absolute inset-y-0 left-1/2 flex w-[9px] -translate-x-1/2 cursor-col-resize touch-none items-center justify-center"
-          >
-            <div className="h-full w-px bg-[var(--border)] transition-colors group-hover:bg-[var(--text-lo)]" />
-          </div>
+          <div className="h-full w-px bg-[var(--border)] transition-colors group-hover:bg-[var(--text-lo)]" />
         )}
-        <button
-          type="button"
-          onClick={() => setCollapsed((c) => !c)}
+        <div
+          role="button"
+          tabIndex={0}
+          onKeyDown={handleToggleKeyDown}
           title={collapsed ? "Mostrar barra de opciones" : "Ocultar barra de opciones"}
-          className="absolute top-3 z-20 flex h-[22px] w-[16px] items-center justify-center rounded-[4px] border border-[var(--border2)] bg-[var(--surface)] text-[var(--text-lo)] transition-colors hover:bg-[var(--border)] hover:text-[var(--text-hi)]"
+          aria-label={collapsed ? "Mostrar barra de opciones" : "Ocultar barra de opciones"}
+          style={{ cursor: "pointer" }}
+          className="absolute top-1/2 z-20 flex h-[22px] w-[16px] -translate-y-1/2 items-center justify-center rounded-[4px] border border-[var(--border2)] bg-[var(--surface)] text-[var(--text-lo)] transition-colors hover:bg-[var(--border)] hover:text-[var(--text-hi)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--text-lo)]"
         >
           <ChevronIcon collapsed={collapsed} />
-        </button>
+        </div>
       </div>
     </div>
   );
