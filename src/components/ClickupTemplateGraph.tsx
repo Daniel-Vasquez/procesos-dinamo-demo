@@ -364,6 +364,14 @@ export default function ClickupTemplateGraph({
     );
 
     edges.update([...areaPersonEdgeUpdates, ...personTaskEdgeUpdates]);
+
+    // The hierarchical layout fixes each node's vertical coordinate to keep it on
+    // its level, which blocks dragging nodes up/down. Release that lock once the
+    // layout above has settled so positions stay untouched but nodes can be
+    // dragged freely afterwards. `level` must be echoed back unchanged: vis-network's
+    // update() treats a missing `level` as a level change and would silently re-run
+    // the hierarchical layout (re-locking every node) as part of this very call.
+    nodes.update(nodes.getIds().map((id) => ({ id, level: nodes.get(id)?.level, fixed: { x: false, y: false } })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAreas, activeTemplates]);
 
