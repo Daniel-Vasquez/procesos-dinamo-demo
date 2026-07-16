@@ -176,7 +176,15 @@ export default function ClickupTemplateGraph({
   const networkRef = useRef<Network | null>(null);
   const nodesRef = useRef<DataSet<Node> | null>(null);
   const edgesRef = useRef<DataSet<Edge> | null>(null);
+  const selectedIdsRef = useRef<Set<string>>(new Set());
   const [selected, setSelected] = useState<{ kind: string; id: string } | null>(null);
+
+  const parseSelected = (id: string): { kind: string; id: string } | null => {
+    if (id.startsWith("area-")) return { kind: "area", id: id.replace("area-", "") };
+    if (id.startsWith("person-")) return { kind: "person", id: id.replace("person-", "") };
+    if (id.startsWith("task-")) return { kind: "task", id: id.replace("task-", "") };
+    return null;
+  };
 
   const areaColor = (areaId: string | null) => (areaId ? areaMap[areaId].color : UNASSIGNED_AREA_COLOR);
 
@@ -247,15 +255,38 @@ export default function ClickupTemplateGraph({
     const network = new Network(containerRef.current, { nodes: nodesDataSet, edges: edgesDataSet }, options);
     networkRef.current = network;
 
-    network.on("click", (params: { nodes: string[] }) => {
-      if (!params.nodes.length) {
+    // Ctrl/Cmd/Alt/Shift + click toggles a node into the current selection instead of
+    // replacing it, so multiple nodes can be selected at once. vis-network's own drag
+    // handler already moves every currently-selected node together when the drag
+    // starts on one of them, so no custom drag logic is needed for that part.
+    network.on("click", (params: { nodes: string[]; event?: { srcEvent?: MouseEvent } }) => {
+      const clickedId = params.nodes[0] as string | undefined;
+      const srcEvent = params.event?.srcEvent;
+      const multiselectKey = !!srcEvent && (srcEvent.ctrlKey || srcEvent.metaKey || srcEvent.altKey || srcEvent.shiftKey);
+
+      if (!clickedId) {
+        selectedIdsRef.current = new Set();
+        network.unselectAll();
         setSelected(null);
         return;
       }
-      const id = params.nodes[0] as string;
-      if (id.startsWith("area-")) setSelected({ kind: "area", id: id.replace("area-", "") });
-      else if (id.startsWith("person-")) setSelected({ kind: "person", id: id.replace("person-", "") });
-      else if (id.startsWith("task-")) setSelected({ kind: "task", id: id.replace("task-", "") });
+
+      if (multiselectKey) {
+        const next = new Set(selectedIdsRef.current);
+        if (next.has(clickedId)) next.delete(clickedId);
+        else next.add(clickedId);
+        selectedIdsRef.current = next;
+      } else {
+        selectedIdsRef.current = new Set([clickedId]);
+      }
+
+      if (selectedIdsRef.current.size > 0) {
+        network.selectNodes([...selectedIdsRef.current], true);
+      } else {
+        network.unselectAll();
+      }
+
+      setSelected(selectedIdsRef.current.has(clickedId) ? parseSelected(clickedId) : null);
     });
 
     // The "Sin asignar" branch has no edge into the main tree, so the hierarchical
