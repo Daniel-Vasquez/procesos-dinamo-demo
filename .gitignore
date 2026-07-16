@@ -26,3 +26,6 @@ pnpm-debug.log*
 
 # ClickUp connection test (standalone exercise, not part of the project)
 clickup-test/
+
+# local work summaries
+RESUMEN-*.md
