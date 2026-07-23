@@ -5,6 +5,7 @@ interface PageNavProps {
 const LINKS = [
   { href: "/", label: "Procesos" },
   { href: "/clickup-plantilla-landing", label: "Plantillas ClickUp" },
+  { href: "/amatza-timeline", label: "Línea de tiempo Amatza" },
 ];
 
 export default function PageNav({ currentPath }: PageNavProps) {

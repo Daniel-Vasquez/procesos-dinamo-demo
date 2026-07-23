@@ -16,9 +16,10 @@ export default defineConfig({
     // 60s, en vez de golpear la API de ClickUp en cada visita.
     isr: {
       expiration: 60,
-      // El botón "Revisar cambios" pega directo a este endpoint: debe traer
-      // datos frescos de ClickUp en cada click, no servir el caché de ISR.
-      exclude: [/^\/api\/clickup\/template\/?$/],
+      // El botón "Revisar cambios" (y el polling en vivo de la línea del
+      // tiempo de Amatza) pegan directo a estos endpoints: deben traer datos
+      // frescos de ClickUp en cada llamada, no servir el caché de ISR.
+      exclude: [/^\/api\/clickup\/(template|amatza-timeline)\/?$/],
     },
   }),
 

@@ -1,0 +1,22 @@
+---
+export const prerender = false;
+
+import "../styles/global.css";
+import AmatzaTimeline from "../components/AmatzaTimeline";
+import { getAmatzaTimelineData } from "../lib/clickup";
+
+const data = await getAmatzaTimelineData();
+---
+
+<html lang="es">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Amatza · Línea de tiempo — ClickUp</title>
+	</head>
+	<body>
+		<AmatzaTimeline client:load data={data} />
+	</body>
+</html>

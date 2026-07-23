@@ -6,6 +6,13 @@ import {
   type ClickupTask,
   type ClickupTemplateData,
 } from "../data/clickupTemplate";
+import {
+  AMATZA_LIST_ID,
+  AMATZA_TEAM,
+  type AmatzaStatusType,
+  type AmatzaTask,
+  type AmatzaTimelineData,
+} from "../data/amatzaTeam";
 
 const CLICKUP_API = "https://api.clickup.com/api/v2";
 
@@ -17,8 +24,10 @@ interface ClickupApiAssignee {
 interface ClickupApiTask {
   id: string;
   name: string;
-  status: { status: string };
+  status: { status: string; type?: string; color?: string };
   assignees: ClickupApiAssignee[];
+  due_date?: string | null;
+  start_date?: string | null;
 }
 
 async function fetchListTasks(listId: string, token: string): Promise<ClickupApiTask[]> {
@@ -87,5 +96,36 @@ export async function getClickupTemplateData(): Promise<ClickupTemplateData> {
     areaMap,
     personMap,
     templateMap,
+  };
+}
+
+/** Server-only: trae en vivo las tareas de ClickUp "Amatza / One page" para la línea del tiempo. */
+export async function getAmatzaTimelineData(): Promise<AmatzaTimelineData> {
+  const token = import.meta.env.CLICKUP_TOKEN;
+  if (!token) {
+    throw new Error("Falta la variable de entorno CLICKUP_TOKEN");
+  }
+
+  const apiTasks = await fetchListTasks(AMATZA_LIST_ID, token);
+  const teamMap = Object.fromEntries(AMATZA_TEAM.map((member) => [member.id, member]));
+
+  const tasks: AmatzaTask[] = apiTasks.map((apiTask) => ({
+    id: apiTask.id,
+    name: apiTask.name,
+    status: apiTask.status.status,
+    statusType: (apiTask.status.type as AmatzaStatusType | undefined) ?? "open",
+    statusColor: apiTask.status.color ?? "#87909e",
+    assigneeIds: apiTask.assignees.map((a) => a.id),
+    dueDate: apiTask.due_date ? Number(apiTask.due_date) : null,
+    startDate: apiTask.start_date ? Number(apiTask.start_date) : null,
+  }));
+
+  tasks.sort((a, b) => (a.dueDate ?? Infinity) - (b.dueDate ?? Infinity));
+
+  return {
+    tasks,
+    team: AMATZA_TEAM,
+    teamMap,
+    fetchedAt: Date.now(),
   };
 }

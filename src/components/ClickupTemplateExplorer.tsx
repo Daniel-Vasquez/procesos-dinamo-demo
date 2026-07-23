@@ -3,12 +3,11 @@ import type { ClickupTemplateData } from "../data/clickupTemplate";
 import ClickupTemplateGraph from "./ClickupTemplateGraph";
 import ClickupTemplateSidebar from "./ClickupTemplateSidebar";
 import PageNav from "./PageNav";
+import RefreshButton, { type RefreshState } from "./RefreshButton";
 
 interface ClickupTemplateExplorerProps {
   data: ClickupTemplateData;
 }
-
-type RefreshState = "idle" | "loading" | "error";
 
 function toggleInSet(prev: Set<string>, id: string): Set<string> {
   const next = new Set(prev);
@@ -71,17 +70,7 @@ export default function ClickupTemplateExplorer({ data: initialData }: ClickupTe
         </span>
         <PageNav currentPath="/clickup-plantilla-landing" />
         <div className="ml-auto flex items-center gap-2.5">
-          {refreshState === "error" && (
-            <span className="text-[10px] text-[#E0635A]">No se pudo consultar ClickUp</span>
-          )}
-          <button
-            type="button"
-            onClick={checkForChanges}
-            disabled={refreshState === "loading"}
-            className="rounded-[5px] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-mid)] transition-colors hover:bg-[var(--border)] hover:text-[var(--text-hi)] disabled:opacity-60"
-          >
-            {refreshState === "loading" ? "Revisando…" : "Revisar cambios"}
-          </button>
+          <RefreshButton state={refreshState} onClick={checkForChanges} />
           <div className="flex items-center gap-[5px] rounded-[5px] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[10px] text-[var(--text-lo)]">
             <div className="h-[5px] w-[5px] rounded-full bg-[#3A7A3A]" />
             {tasks.length} tareas &nbsp;·&nbsp; {peopleCount} personas &nbsp;·&nbsp; {areas.length} áreas
