@@ -352,7 +352,18 @@ export default function AmatzaTimelineGraph({ tasks, team, teamMap }: AmatzaTime
       const laneTasks = tasks.filter((t) =>
         laneId === UNASSIGNED_LANE_ID ? t.assigneeIds.length === 0 : t.assigneeIds.includes(laneId),
       );
-      const completedCount = laneTasks.filter((t) => isCompletedStatus(t.statusType)).length;
+      const pendingTasks = laneTasks.filter((t) => !isCompletedStatus(t.statusType));
+      const completedTasks = laneTasks.filter((t) => isCompletedStatus(t.statusType));
+
+      const renderTaskItem = (t: AmatzaTask) => (
+        <li key={t.id}>
+          <span className="block truncate">{t.name}</span>
+          {t.dueDate && (
+            <span className="text-[10px] text-[var(--text-lo)]">{dateFormatter.format(new Date(t.dueDate))}</span>
+          )}
+        </li>
+      );
+
       return (
         <>
           <div className="text-[13px] font-semibold" style={{ color: member.color }}>
@@ -360,18 +371,36 @@ export default function AmatzaTimelineGraph({ tasks, team, teamMap }: AmatzaTime
           </div>
           <div className="mt-0.5 text-[11px] text-[var(--text-mid)]">{member.role}</div>
           <div className="mt-2 text-[11px] text-[var(--text-mid)]">
-            {completedCount}/{laneTasks.length} tarea{laneTasks.length !== 1 ? "s" : ""} completada
+            {completedTasks.length}/{laneTasks.length} tarea{laneTasks.length !== 1 ? "s" : ""} completada
             {laneTasks.length !== 1 ? "s" : ""}
           </div>
-          <ul className="mt-2 max-h-[220px] space-y-1 overflow-y-auto text-[11px] text-[var(--text-hi)]">
-            {laneTasks.map((t) => (
-              <li key={t.id}>
-                {isCompletedStatus(t.statusType) ? "✓ " : ""}
-                {t.name}
-                {t.dueDate && <span className="text-[var(--text-lo)]"> · {dateFormatter.format(new Date(t.dueDate))}</span>}
-              </li>
-            ))}
-          </ul>
+
+          <div className="mt-3 divide-y divide-[var(--border)]">
+            <div className="pb-2.5">
+              <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-lo)]">
+                Tareas pendientes ({pendingTasks.length})
+              </div>
+              {pendingTasks.length ? (
+                <ul className="mt-1.5 max-h-[160px] space-y-1.5 overflow-y-auto text-[11px] text-[var(--text-hi)]">
+                  {pendingTasks.map(renderTaskItem)}
+                </ul>
+              ) : (
+                <div className="mt-1.5 text-[11px] text-[var(--text-lo)]">Sin tareas pendientes</div>
+              )}
+            </div>
+            <div className="pt-2.5">
+              <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-lo)]">
+                Tareas completadas ({completedTasks.length})
+              </div>
+              {completedTasks.length ? (
+                <ul className="mt-1.5 max-h-[160px] space-y-1.5 overflow-y-auto text-[11px] text-[var(--text-hi)]">
+                  {completedTasks.map(renderTaskItem)}
+                </ul>
+              ) : (
+                <div className="mt-1.5 text-[11px] text-[var(--text-lo)]">Sin tareas completadas</div>
+              )}
+            </div>
+          </div>
         </>
       );
     }
@@ -411,7 +440,7 @@ export default function AmatzaTimelineGraph({ tasks, team, teamMap }: AmatzaTime
       <div ref={containerRef} className="h-full w-full" />
 
       {detail && (
-        <div className="absolute bottom-[18px] left-[15px] z-[5] max-w-[280px] rounded-[9px] border border-[var(--border2)] bg-[var(--surface)] p-3 shadow-lg">
+        <div className="absolute bottom-[18px] left-[15px] z-[5] max-h-[70vh] w-[300px] overflow-y-auto rounded-[9px] border border-[var(--border2)] bg-[var(--surface)] p-3 shadow-lg">
           {detail}
         </div>
       )}
