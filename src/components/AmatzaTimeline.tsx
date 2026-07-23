@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { isCompletedStatus, type AmatzaTimelineData } from "../data/amatzaTeam";
 import AmatzaTimelineGraph from "./AmatzaTimelineGraph";
 import PageNav from "./PageNav";
+import ResizableSidebar from "./ResizableSidebar";
 import RefreshButton, { type RefreshState } from "./RefreshButton";
 
 interface AmatzaTimelineProps {
@@ -9,6 +10,40 @@ interface AmatzaTimelineProps {
 }
 
 const POLL_INTERVAL_MS = 20_000;
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <div className="mb-[7px] text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-lo)]">
+      {children}
+    </div>
+  );
+}
+
+function TeamRow({
+  name,
+  role,
+  color,
+  completed,
+  total,
+}: {
+  name: string;
+  role: string;
+  color: string;
+  completed: number;
+  total: number;
+}) {
+  return (
+    <div className="flex items-start gap-2 rounded-[7px] border border-transparent px-2.5 py-[7px]">
+      <span className="mt-[3px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: color }} />
+      <div className="min-w-0">
+        <div className="truncate text-[11.5px] font-medium text-[var(--text-hi)]">{name}</div>
+        <div className="text-[10px] text-[var(--text-lo)]">
+          {role} · {completed}/{total} completada{total !== 1 ? "s" : ""}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AmatzaTimeline({ data: initialData }: AmatzaTimelineProps) {
   const [data, setData] = useState(initialData);
@@ -62,8 +97,31 @@ export default function AmatzaTimeline({ data: initialData }: AmatzaTimelineProp
           </div>
         </div>
       </header>
-      <div className="relative flex-1 overflow-hidden">
-        <AmatzaTimelineGraph tasks={tasks} team={team} teamMap={teamMap} />
+      <div className="flex flex-1 overflow-hidden">
+        <ResizableSidebar label="leyenda del equipo">
+          <div>
+            <SectionLabel>Equipo</SectionLabel>
+            <div className="flex flex-col gap-0.5">
+              {team.map((member) => {
+                const memberTasks = tasks.filter((t) => t.assigneeIds.includes(member.id));
+                const completed = memberTasks.filter((t) => isCompletedStatus(t.statusType)).length;
+                return (
+                  <TeamRow
+                    key={member.id}
+                    name={member.name}
+                    role={member.role}
+                    color={member.color}
+                    completed={completed}
+                    total={memberTasks.length}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </ResizableSidebar>
+        <div className="relative flex-1 overflow-hidden">
+          <AmatzaTimelineGraph tasks={tasks} team={team} teamMap={teamMap} />
+        </div>
       </div>
     </div>
   );
